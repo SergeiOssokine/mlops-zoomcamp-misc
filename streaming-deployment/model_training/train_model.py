@@ -101,6 +101,9 @@ def main(
 
     # Run the training
     with mlflow.start_run():
+
+        # GBRT are relatively insensitive to over-fitting so we can use
+        # a large number of boosting ierations
         params = dict(
             n_estimators=2000, min_samples_leaf=20, learning_rate=0.2, verbose=2
         )
