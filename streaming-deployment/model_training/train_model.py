@@ -1,14 +1,25 @@
+import logging
 from typing import Dict, List, Union
 
 import mlflow
 import pandas as pd
 import pandera as pa
 import typer
+from rich.logging import RichHandler
+from rich.traceback import install
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.metrics import root_mean_squared_error
 from sklearn.pipeline import make_pipeline
 from typing_extensions import Annotated
+
+# Sets up the logger to work with rich
+logger = logging.getLogger(__name__)
+logger.addHandler(RichHandler(rich_tracebacks=True, markup=True))
+logger.setLevel("INFO")
+# Setup rich to get nice tracebacks
+install()
+
 
 # Basic pandera validation schema for our data
 schema = pa.DataFrameSchema(
@@ -89,13 +100,14 @@ def main(
 ):
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
+    logger.info("Reading data")
     df_train = read_dataframe("./data/green_tripdata_2023-01.parquet")
     df_val = read_dataframe("./data/green_tripdata_2023-02.parquet")
 
     target = "duration"
     y_train = df_train[target].values
     y_val = df_val[target].values
-
+    logger.info("Preprocessing data")
     dict_train = prepare_dictionaries(df_train)
     dict_val = prepare_dictionaries(df_val)
 
@@ -110,15 +122,16 @@ def main(
         mlflow.log_params(params)
 
         pipeline = make_pipeline(DictVectorizer(), GradientBoostingRegressor(**params))
-
+        logger.info("Training model")
         pipeline.fit(dict_train, y_train)
         y_pred = pipeline.predict(dict_val)
 
         rmse = root_mean_squared_error(y_pred, y_val)
 
         mlflow.log_metric("rmse", rmse)
-
+        logger.info("Logging model artifact")
         mlflow.sklearn.log_model(pipeline, artifact_path="model")
+        logger.info("All done")
 
 
 if __name__ == "__main__":

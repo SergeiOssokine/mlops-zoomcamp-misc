@@ -1,0 +1,8 @@
+{
+        "ride": {
+            "PULocationID": 30,
+            "DOLocationID": 105,
+            "trip_distance": 1.66
+        }, 
+        "ride_id": 999
+    }
