@@ -1,0 +1,12 @@
+Metadata:
+  StackName: model_artifact_storage_stack
+Parameters:
+  BucketNameParam:
+    Description: The name of the bucket to store the sklearn model
+    Type: String
+    Default: "nyc-taxi-example-c8655d49-a1ce-4fbd-86fc-974e5ac45bd2"
+Resources:
+  ModelS3Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref BucketNameParam

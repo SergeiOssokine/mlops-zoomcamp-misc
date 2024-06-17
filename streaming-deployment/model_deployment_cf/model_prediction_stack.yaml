@@ -1,0 +1,140 @@
+Parameters:
+  BucketNameParam:
+    Description: The name of the bucket to store the sklearn model
+    Type: String
+    Default: "nyc-taxi-example-c8655d49-a1ce-4fbd-86fc-974e5ac45bd2"
+  InputStreamParam:
+    Description: The name of the input Kinesis stream
+    Type: String
+    Default: "ride_events"
+  OutputStreamParam:
+    Description: The name of the output Kinesis stream
+    Type: String
+    Default: "ride_predictions"
+  RegionParam:
+    Description: The region in which to operate
+    Type: String
+    Default: "us-east-1"
+  RunID:
+    Description: The hash of the model we want to use
+    Type: String
+    Default: "4b52749c99d445248fa8aae520c3c4ac"
+
+Resources:
+  TestRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "test-role-new"
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal: 
+              Service:
+                - lambda.amazonaws.com
+        Version: "2012-10-17"
+      Description: "The role for reading from input stream, running model and writing to output stream"
+      ManagedPolicyArns: 
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaKinesisExecutionRole"
+      Policies:
+        - PolicyName: AllowLambdaModelRead
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Sid: "VisualEditor0"
+                Action:
+                  - "s3:Get*"
+                  - "s3:List*"
+                Resource:
+                  - !Join
+                    - ""
+                    - - "arn:aws:s3:::"
+                      - !Ref BucketNameParam
+                  - !Join
+                    - ""
+                    - - "arn:aws:s3:::"
+                      - !Ref BucketNameParam
+                      - /*
+        - PolicyName: KinesisWritePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Sid: "VisualEditor1"
+                Action:
+                  - "kinesis:PutRecord*"
+                Resource:
+                  - !Join
+                    - ""
+                    - - "arn:aws:kinesis:"
+                      - !Ref RegionParam
+                      - ":"
+                      - !Sub "${AWS::AccountId}"
+                      - ":stream/"
+                      - !Ref OutputStreamParam
+
+  InputStream:
+    Type: AWS::Kinesis::Stream
+    Properties: 
+        Name: !Ref InputStreamParam 
+        RetentionPeriodHours: 24
+        ShardCount: 1 
+
+  OutputStream:
+    Type: AWS::Kinesis::Stream
+    Properties: 
+        Name: !Ref OutputStreamParam 
+        RetentionPeriodHours: 24
+        ShardCount: 1 
+
+  ModelLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: MakePredictions
+      Description: "Lambda function to perform model inference"
+      Role: !GetAtt TestRole.Arn
+      PackageType: Image
+      Code:
+        ImageUri: 
+          !Join
+            - ""
+            - -  !Sub "${AWS::AccountId}"
+              - ".dkr.ecr."
+              - !Ref RegionParam
+              - ".amazonaws.com/duration-model:v0.5"
+      Timeout: 700
+      MemorySize: 512
+      Environment:
+        Variables:
+          LOGGED_MODEL: 
+            !Join
+              - ""
+              - - "s3://"
+                - !Ref BucketNameParam
+                - "/1/"
+                - !Ref RunID
+                - "/artifacts/model"
+
+  MyEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn:
+        Fn::Join:
+          - ""
+          -
+            - "arn:aws:kinesis:"
+            -
+              Ref: "AWS::Region"
+            - ":"
+            -
+              Ref: "AWS::AccountId"
+            - ":stream/"
+            -
+              Ref: "InputStream"
+      FunctionName:
+        Fn::GetAtt:
+          - "ModelLambdaFunction"
+          - "Arn"
+      StartingPosition: "LATEST"
