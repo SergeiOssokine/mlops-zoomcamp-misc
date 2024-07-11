@@ -1,0 +1,5 @@
+source_stream_name   = "ride_events"
+output_stream_name   = "ride_predictions"
+model_bucket         = "nyc-taxi-example-df643605-4bc1-4463-a501-a9f06cbb6f24"
+lambda_function_name = "stg_prediction_lambda"
+run_id               = "f3fd5364a5394d93ba7b4a68e3ca96e7"
