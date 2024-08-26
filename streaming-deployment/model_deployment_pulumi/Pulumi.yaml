@@ -1,0 +1,11 @@
+name: streaming_model
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv
+description: Deploys a simple streaming model based on an input Kinesis stream, a Lambda and an ouput kinesis stream. Assumes the lambda function image is already in the ECR.
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: aws-python
