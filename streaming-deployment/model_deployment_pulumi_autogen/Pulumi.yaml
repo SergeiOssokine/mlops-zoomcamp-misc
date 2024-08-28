@@ -1,0 +1,5 @@
+name: model_deployment_tf
+runtime: python
+config:
+  aws:region:
+    value: 'us-east-1'
